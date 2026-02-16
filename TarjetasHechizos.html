@@ -7,19 +7,25 @@
 
 	<meta name="viewport" content="width=device-width, initial-scale=1">
 	<link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css">
-	<script src="javascript/TH_comun.js"></script>
-	<script src="javascript/TH_sistemabase.js"></script>
-	<script src="javascript/TH_cdlm.js"></script>
-	<script src="javascript/TH_aelmde.js"></script>
-	<script src="javascript/TH_sistemas.js"></script>
-
-	<script src="javascript/pdfform.minipdf.dist.js"></script>
-	<script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+	<!-- Libraries -->
 	<script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/3.3.0/math.min.js"></script>
 	<script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
 
-	<!-- New Refactored Scripts -->
+	<!-- Architecture: Infrastructure -->
+	<script src="javascript/infrastructure/DataLoader.js"></script>
+
+	<!-- Architecture: Domain -->
+	<script src="javascript/domain/GameSystem.js"></script>
+	<script src="javascript/domain/AeLMdESystem.js"></script>
+	<script src="javascript/domain/CdLMSystem.js"></script>
+
+	<!-- Architecture: Services & UI -->
+	<script src="javascript/services/SystemRegistry.js"></script>
+	<script src="javascript/ui/UIManager.js"></script>
 	<script src="javascript/PDFService.js"></script>
+
+	<!-- Main Controller -->
 	<script src="javascript/SpellCardApp.js"></script>
 
 	<script>
@@ -123,7 +129,7 @@
 	<div style="overflow:auto">
 		<div class="left">
 			<label class="w3-text-blue"><strong>Juego</strong></label>
-			<select class="w3-select" name="sistema" onChange="seleccionasistema(this)">
+			<select class="w3-select" name="sistema">
 				<option>--Selecciona--</option>
 				<option>Aventuras en La Marca del Este</option>
 				<option>Crónicas de La Marca</option>
@@ -133,7 +139,7 @@
 		<div class="main" id="divtipo">
 		</div>
 		<div class="left" id="botonpdf">
-			<p><button class='w3-button w3-block w3-blue' onclick='generaPDF()'>Genera PDF</button></p>
+			<p><button class='w3-button w3-block w3-blue'>Genera PDF</button></p>
 		</div>
 	</div>
 	<div style="overflow:auto">

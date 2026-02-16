@@ -1,201 +1,120 @@
 class SpellCardApp {
     constructor() {
         this.currentSystem = null;
-        this.systemsManager = sistemas; // Instancia global de Sistemas
-        this.tiposSistema = [];
-        this.lHechizos = [];
-        this.tipoHechizos = "";
-
+        this.systemRegistry = new SystemRegistry();
+        this.uiManager = new UIManager();
         this.pdfService = new PDFService();
-        this.ui = this._getUIElements();
 
-        // Inicializar el estado de la UI
-        this._initUI();
-    }
-
-    _getUIElements() {
-        return {
-            divTipo: document.getElementById("divtipo"),
-            btnPdf: document.getElementById("botonpdf"),
-            listaHechizos: document.getElementById("listahechizos"),
-            hechizosContainers: [
-                document.getElementById("hechizos1"),
-                document.getElementById("hechizos2"),
-                document.getElementById("hechizos3")
-            ],
-            // Selectores dinámicos serán gestionados por eventos delegados en divTipo
+        // Initial state
+        this.filterState = {
+            type: null,
+            level: null
         };
+
+
+        this.currentSpells = [];
+
+        this.init();
     }
 
-    _initUI() {
-        this.ui.divTipo.style.visibility = "hidden";
-        this.ui.btnPdf.style.visibility = "hidden";
-        this.ui.listaHechizos.style.visibility = "hidden";
+    async init() {
+        this._bindEvents();
+    }
 
-        // Delegación de eventos para los selectores dinámicos en divtipo
-        this.ui.divTipo.addEventListener('change', (event) => {
-            if (event.target.tagName === 'SELECT') {
-                const selectElement = event.target;
-                // Intentar deducir el índice basado en el nombre o posición si es posible
-                // Aunque la implementación actual de los sistemas usa onChange='seleccionatipo(this, indice)'
-                // Por lo tanto, mantendremos la función global proxy seleccionatipo(thelist, indice)
-            }
-        });
+    _bindEvents() {
+        // System selector
+        const select = document.getElementsByName('sistema')[0];
+        if (select) {
+            select.addEventListener('change', (e) => this.onSystemChange(e.target.value));
+        }
 
-        // Event listener para el botón de generación de PDF
-        const btn = this.ui.btnPdf.querySelector('button');
+        // PDF Button
+        const btn = document.querySelector('#botonpdf button');
         if (btn) {
-            btn.onclick = () => this.generatePDF(); // Override onclick attribute
+            btn.onclick = () => this.generatePDF();
         }
     }
 
-    /**
-     * Resetea la UI al estado inicial
-     */
-    resetUI() {
-        this.ui.divTipo.innerHTML = "";
-        this.ui.hechizosContainers.forEach(container => container.innerHTML = "");
+    async onSystemChange(systemName) {
+        this.uiManager.hideAll();
+        this.currentSystem = this.systemRegistry.getSystem(systemName);
 
-        this.ui.divTipo.style.visibility = "hidden";
-        this.ui.btnPdf.style.visibility = "hidden";
-        this.ui.listaHechizos.style.visibility = "hidden";
-    }
-
-    /**
-     * Gestiona la selección de un sistema de juego
-     * @param {HTMLSelectElement} selectElement 
-     */
-    selectSystem(selectElement) {
-        this.resetUI();
-
-        this.tiposSistema = [];
-        this.lHechizos = [];
-        this.tipoHechizos = "";
-
-        this.currentSystem = this.systemsManager.seleccionasistema(selectElement);
-
-        if (this.currentSystem) {
-            this.lHechizos = this.currentSystem.cargaHechizos();
-            this._loadSystemTypes();
-        }
-    }
-
-    _loadSystemTypes() {
-        if (this.currentSystem) {
-            this.tiposSistema = this.currentSystem.listaTipos();
-            const tiposHtml = this.currentSystem.construyeSelectTipos(this.tiposSistema);
-            this.ui.divTipo.innerHTML = tiposHtml;
-            this.ui.divTipo.style.visibility = "visible";
-        }
-    }
-
-    /**
-     * Gestiona la selección de un tipo de hechizo o nivel
-     * @param {HTMLSelectElement} selectElement 
-     * @param {number} index Indice del selector (0 para tipo, 1 para nivel generalmente)
-     */
-    selectType(selectElement, index) {
         if (!this.currentSystem) return;
 
-        const idx = selectElement.selectedIndex;
+        // Reset filters
+        this.filterState = { type: null, level: null };
 
-        // Lógica de filtrado
-        if (idx > 0 && this.tiposSistema[index] && this.tiposSistema[index].length > 0) {
-            this.tipoHechizos = this.tiposSistema[index][idx - 1]; // Ajuste por opción 'Selecciona'
-            this.currentSystem.setTipo(this.tipoHechizos, index);
-            this.lHechizos = this.currentSystem.cargaHechizos();
-        }
-        else if (this.tiposSistema[index] && this.tiposSistema[index].length > 0) {
-            // Opción 'Selecciona' o vacía
-            this.currentSystem.setTipo("", index);
-            this.lHechizos = this.currentSystem.cargaHechizos();
-        }
-        else {
-            // Fallback
-            this.tipoHechizos = "";
-            this.lHechizos = [];
-            this.ui.hechizosContainers.forEach(c => c.innerHTML = "");
-            this.ui.listaHechizos.style.visibility = "hidden";
-            this.ui.btnPdf.style.visibility = "hidden";
+        // Initialize system data if needed (lazy loading)
+        // Check if init is done? Better just call it, assuming it handles multiple calls or check internal flag
+        if (!this.currentSystem.initialized) {
+            await this.currentSystem.init();
+            this.currentSystem.initialized = true;
         }
 
-        // Actualizar visibilidad de spell list si hay hechizos
-        if (this.lHechizos && this.lHechizos.length > 0) {
-            // La visibilidad se gestiona dentro de cargaHechizos/pintaHechizos en el sistema base,
-            // pero podríamos asegurarnos aquí si refactorizamos más profunadmente.
-        } else {
-            // Si la lista está vacía explicitamente ocultar
-            if (!this.lHechizos || this.lHechizos.length === 0) {
-                this.ui.listaHechizos.style.visibility = "hidden";
-                this.ui.btnPdf.style.visibility = "hidden";
-            }
-        }
+        // Render filter UI
+        this.uiManager.renderFilterControls(this.currentSystem, (filterType, value) => {
+            this.onFilterChange(filterType, value);
+        });
     }
 
-    /**
-     * Genera el PDF con los hechizos seleccionados
-     */
+    onFilterChange(type, value) {
+        this.filterState[type] = value;
+
+        // If type changed, update system config if necessary
+        if (type === 'type') {
+            this.currentSystem.selectedType = value;
+            this.currentSystem.setSpellType(value);
+            // Some systems might change PDF template based on type
+        }
+
+        this.updateSpellList();
+    }
+
+    updateSpellList() {
+        if (!this.filterState.type && !this.filterState.level) {
+            this.uiManager.clearSpellList();
+            return;
+        }
+
+        this.currentSpells = this.currentSystem.getSpells(
+            this.filterState.type,
+            this.filterState.level
+        );
+
+        this.uiManager.renderSpellList(this.currentSpells);
+    }
+
     async generatePDF() {
         if (!this.currentSystem) return;
 
-        const numHechizosPorPagina = this.currentSystem.numeroHechizos();
-        const hechizosSeleccionados = this._getSelectedSpells();
+        // Get selected spells from checkboxes
+        const selectedSpellNames = [];
 
-        // Validación: Si no hay hechizos seleccionados manualmente pero tampoco se ha filtrado nada específico
-        // la lógica original intentaba imprimir todos si num==0.
-        // Aquí simplificamos: Si no hay selección manual, imprimir todos los listados actualmente (filtrados).
-        let spellsToPrint = [];
+        // We need to iterate over the current displayed list to check IDs
+        // UI Manager generates IDs based on index in currentSpells
+        this.currentSpells.forEach((spell, index) => {
+            const checkbox = document.getElementById(`chechizos${index}`);
+            if (checkbox && checkbox.checked) {
+                selectedSpellNames.push(spell.nombre); // or spell.name
+            }
+        });
 
-        if (hechizosSeleccionados.length > 0) {
-            spellsToPrint = hechizosSeleccionados;
-        } else {
-            // Si no seleccionó ninguno, imprimir todos los visibles
-            spellsToPrint = this.lHechizos.map(h => h.nombre);
-        }
-
-        if (spellsToPrint.length === 0) {
-            alert("No hay hechizos para imprimir.");
-            return;
+        // If none selected, maybe print all? Original logic did this.
+        let spellsToPrint = selectedSpellNames;
+        if (selectedSpellNames.length === 0) {
+            // If filter is active and shows spells, print them all
+            if (this.currentSpells.length > 0) {
+                spellsToPrint = this.currentSpells.map(s => s.nombre);
+            } else {
+                alert("No hay hechizos seleccionados ni listados para imprimir.");
+                return;
+            }
         }
 
         await this.pdfService.generatePDF(this.currentSystem, spellsToPrint);
     }
-
-    _getSelectedSpells() {
-        const selected = [];
-        // Iterar sobre los checkboxes generados. 
-        // Nota: Los IDs son generados por SistemaBase.pintaHechizos como 'chechizos0', 'chechizos1', etc.
-        // Esto es una dependencia implícita que mantenemos por ahora.
-        for (let i = 0; i < this.lHechizos.length; i++) {
-            const checkbox = document.getElementById("chechizos" + i);
-            if (checkbox && checkbox.checked) {
-                selected.push(this.lHechizos[i].nombre);
-            }
-        }
-        return selected;
-    }
 }
-
-// Inicialización Global
-let spellApp;
-
-window.addEventListener('DOMContentLoaded', () => {
-    spellApp = new SpellCardApp();
+// Initialize the application
+document.addEventListener('DOMContentLoaded', () => {
+    window.spellApp = new SpellCardApp();
 });
-
-// Funciones Proxy para mantener compatibilidad con los atributos HTML inline generados por las clases legadas
-// (TH_sistemabase.js, etc.) que usan 'onclick="seleccionasistema(this)"', etc.
-window.seleccionasistema = (element) => {
-    if (spellApp) spellApp.selectSystem(element);
-};
-
-window.seleccionatipo = (element, index) => {
-    if (spellApp) spellApp.selectType(element, index);
-};
-
-window.generaPDF = () => {
-    if (spellApp) spellApp.generatePDF();
-};
-
-// Sobrescribir cargapagina por si acaso, aunque ya se eliminó la llamada manual
-window.cargapagina = () => { /* No-op, managed by class constructor */ };

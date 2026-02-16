@@ -1,8 +1,8 @@
 class PDFService {
     /**
      * Genera un PDF fusionado con las tarjetas de los hechizos seleccionados.
-     * @param {Object} system - Instancia del sistema seleccionado (e.g., AeLMdE, CdLM).
-     * @param {Array} selectedSpells - Lista de nombres de hechizos seleccionados.
+     * @param {GameSystem} system - Instancia del sistema seleccionado.
+     * @param {string[]} selectedSpells - Lista de nombres de hechizos seleccionados.
      * @returns {Promise<void>}
      */
     async generatePDF(system, selectedSpells) {
@@ -16,11 +16,11 @@ class PDFService {
             return;
         }
 
-        const numHechizosPorPagina = system.numeroHechizos();
+        const numHechizosPorPagina = system.getSpellsPerCard();
 
         try {
             // Cargar la plantilla PDF una sola vez
-            const response = await fetch(system.nombrePDF());
+            const response = await fetch(system.getPDFTemplate());
             if (!response.ok) throw new Error(`Error al cargar la plantilla PDF: ${response.statusText}`);
 
             const templateArrayBuffer = await response.arrayBuffer();
@@ -33,7 +33,7 @@ class PDFService {
                 const batch = selectedSpells.slice(k, k + numHechizosPorPagina);
 
                 // Obtener los datos para rellenar los campos de este lote
-                const fieldsData = system.rellenaPDF(batch);
+                const fieldsData = system.mapSpellsToPDF(batch);
 
                 // Cargar una copia de la plantilla para esta página
                 const batchDoc = await PDFLib.PDFDocument.load(templateArrayBuffer.slice(0));
@@ -53,7 +53,7 @@ class PDFService {
             // Guardar y descargar el PDF final
             const pdfBytes = await mergedPdf.save();
             const blob = new Blob([pdfBytes], { type: 'application/pdf' });
-            saveAs(blob, 'Tarjeta ' + system.nombretarjetaPDF() + '.pdf');
+            saveAs(blob, 'Tarjeta ' + system.name + '.pdf');
 
         } catch (error) {
             console.error("Error generating PDF:", error);
@@ -62,7 +62,7 @@ class PDFService {
     }
 
     /**
-     * Rellena los campos del formulario PDF con los datos proporcionados taking into account constraints.
+     * Rellena los campos del formulario PDF con los datos proporcionados.
      * @private
      * @param {PDFLib.PDFForm} form 
      * @param {Object} fieldsData 
@@ -76,7 +76,7 @@ class PDFService {
             try {
                 const field = form.getField(key);
                 if (field instanceof PDFLib.PDFTextField) {
-                    // Eliminar límite de longitud si existe, para evitar errores con plantillas antiguas
+                    // Eliminar límite de longitud si existe
                     field.setMaxLength(undefined);
 
                     // Asegurar que el campo es editable
@@ -105,8 +105,7 @@ class PDFService {
                     field.setText(textValue);
                 }
             } catch (err) {
-                // El campo podría no existir en la plantilla o haber otro error
-                // Se loguea pero no interrumpe el proceso
+                // Log warning but continue
                 console.warn(`Campo '${key}' no encontrado o error al asignar texto:`, err);
             }
         }
