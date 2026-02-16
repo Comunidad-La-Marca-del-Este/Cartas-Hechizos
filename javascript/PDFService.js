@@ -84,6 +84,24 @@ class PDFService {
                         field.enableReadOnly(false);
                     }
 
+                    // APLICAR CORRECCIÓN DE ALINEACIÓN: Bajar ligeramente el texto
+                    try {
+                        if (field.acroField && field.acroField.getWidgets) {
+                            const widgets = field.acroField.getWidgets();
+                            widgets.forEach(widget => {
+                                const rect = widget.getRectangle();
+                                widget.setRectangle({
+                                    x: rect.x,
+                                    y: rect.y - 3, // Move down 3 points
+                                    width: rect.width,
+                                    height: rect.height
+                                });
+                            });
+                        }
+                    } catch (e) {
+                        // Ignore positioning errors
+                    }
+
                     field.setText(textValue);
                 }
             } catch (err) {
