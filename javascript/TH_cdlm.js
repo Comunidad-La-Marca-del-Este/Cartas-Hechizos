@@ -107,7 +107,6 @@ class CdLM extends SistemaBase {
 			fields["TL" + (i + 1)] = [this.hechizos.Hechizos[lHechizos[i]].TL];
 			fields["Componentes" + (i + 1)] = [this.hechizos.Hechizos[lHechizos[i]].Componentes];
 			fields["RC" + (i + 1)] = [this.hechizos.Hechizos[lHechizos[i]].RC];
-			fields["Nivel" + (i + 1)] = [this.nivelHechizo(this.hechizos.Hechizos[lHechizos[i]].Nivel)];
 		}
 		return fields;
 	}
