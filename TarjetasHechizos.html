@@ -1,3 +1,4 @@
+<!DOCTYPE html>
 <html>
 
 <head>
@@ -17,161 +18,13 @@
 	<script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/3.3.0/math.min.js"></script>
 	<script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
 
+	<!-- New Refactored Scripts -->
+	<script src="javascript/PDFService.js"></script>
+	<script src="javascript/SpellCardApp.js"></script>
+
 	<script>
-
-		let objsistema = null;
-		let tipossistema = [];
-		let lHechizos = [];
-		let tipohechizos = "";
-
-		async function generaPDF() {
-
-			if (objsistema == null) return;
-			var numHechizos = objsistema.numeroHechizos();
-			var hechizosSeleccionados = [];
-			var i = 0;
-			var num = 0;
-
-			for (i = 0; i < lHechizos.length; i++) {
-				if (document.getElementById("chechizos" + i).checked) {
-					hechizosSeleccionados.push(lHechizos[i].nombre);
-					num++;
-				}
-			}
-
-			if (hechizosSeleccionados.length == 0 && num == 0) {
-				for (i = 0; i < lHechizos.length && i < numHechizos; i++) {
-					hechizosSeleccionados.push(lHechizos[i].nombre);
-				}
-			}
-
-			if (hechizosSeleccionados.length === 0) return;
-
-			try {
-				// Load the template once
-				const response = await fetch(objsistema.nombrePDF());
-				const templateArrayBuffer = await response.arrayBuffer();
-
-				const mergedPdf = await PDFLib.PDFDocument.create();
-
-				// Process spells in batches
-				for (let k = 0; k < hechizosSeleccionados.length; k += numHechizos) {
-					const batch = hechizosSeleccionados.slice(k, k + numHechizos);
-
-					// Get field data for this batch
-					const fieldsData = objsistema.rellenaPDF(batch);
-
-					// Load template for this batch
-					const batchDoc = await PDFLib.PDFDocument.load(templateArrayBuffer.slice(0));
-					const form = batchDoc.getForm();
-
-					// Fill fields
-					for (const [key, valueArray] of Object.entries(fieldsData)) {
-						if (!valueArray || valueArray.length === 0) continue;
-						const textValue = String(valueArray[0]);
-
-						try {
-							const field = form.getField(key);
-							if (field instanceof PDFLib.PDFTextField) {
-								// Remove MaxLength limit that might be set to 0 in the template
-								field.setMaxLength(undefined);
-								// Also mark as not read-only just in case
-								if (field.isReadOnly()) field.enableReadOnly(false);
-
-								field.setText(textValue);
-
-								// Optional: Adjustment for multiline if needed, though usually set in template
-								// if (field.isMultiline() === false && textValue.includes('\n')) {
-								//    field.enableMultiline();
-								// }
-							}
-						} catch (err) {
-							// Field might not exist in template or other error
-							console.log("Field not found or error setting text:", key, err);
-						}
-					}
-
-					// Flatten the form to burn in the text
-					form.flatten();
-
-					// Copy pages to the merged document
-					const copiedPages = await mergedPdf.copyPages(batchDoc, batchDoc.getPageIndices());
-					copiedPages.forEach((page) => mergedPdf.addPage(page));
-				}
-
-				// Save and download the final merged PDF
-				const pdfBytes = await mergedPdf.save();
-				const blob = new Blob([pdfBytes], { type: 'application/pdf' });
-				saveAs(blob, 'Tarjeta ' + objsistema.nombretarjetaPDF() + '.pdf');
-
-			} catch (error) {
-				console.error("Error generating PDF:", error);
-				alert("Hubo un error al generar el PDF. Por favor consulta la consola para más detalles.");
-			}
-		}
-
-		function cargapagina() {
-			document.getElementById("divtipo").style.visibility = "hidden";
-			document.getElementById("botonpdf").style.visibility = "hidden";
-			document.getElementById("listahechizos").style.visibility = "hidden";
-		}
-
-		function vacia() {
-			document.getElementById("divtipo").innerHTML = "";
-			document.getElementById("hechizos1").innerHTML = "";
-			document.getElementById("hechizos2").innerHTML = "";
-			document.getElementById("hechizos3").innerHTML = "";
-			document.getElementById("divtipo").style.visibility = "hidden";
-			document.getElementById("botonpdf").style.visibility = "hidden";
-			document.getElementById("listahechizos").style.visibility = "hidden";
-		}
-
-		function cargaTipos() {
-			if (objsistema != null) {
-				tipossistema = objsistema.listaTipos();
-				var tiposhtml = objsistema.construyeSelectTipos(tipossistema);
-				document.getElementById("divtipo").innerHTML = tiposhtml;
-				document.getElementById("divtipo").style.visibility = "visible";
-			}
-		}
-
-		function seleccionasistema(thelist) {
-			vacia();
-
-			tipossistema = [];
-			lHechizos = [];
-			tipohechizos = "";
-
-			objsistema = sistemas.seleccionasistema(thelist);
-			lHechizos = objsistema.cargaHechizos();
-
-			cargaTipos();
-
-		}
-
-
-		function seleccionatipo(thelist, indice) {
-			var idx = thelist.selectedIndex;
-			if (idx > 0 && tipossistema[indice].length > 0) {
-				tipohechizos = tipossistema[indice][idx - 1];
-				objsistema.setTipo(tipohechizos, indice);
-				objsistema.cargaHechizos();
-			}
-			else if (tipossistema[indice].length > 0) {
-				objsistema.setTipo("", indice);
-				objsistema.cargaHechizos();
-			}
-			else {
-				tipohechizos = "";
-				lHechizos = [];
-				document.getElementById("hechizos1").innerHTML = "";
-				document.getElementById("hechizos2").innerHTML = "";
-				document.getElementById("hechizos3").innerHTML = "";
-				document.getElementById("listahechizos").style.visibility = "hidden";
-				document.getElementById("botonpdf").style.visibility = "hidden";
-			}
-		}
-
+		// La aplicación se inicializa automáticamente al cargar SpellCardApp.js
+		// Mantenemos esto limpio.
 	</script>
 
 	<style>
@@ -293,7 +146,6 @@
 			<div class="left" id="hechizos3"></div>
 		</div>
 	</div>
-	<script>cargapagina();</script>
 </body>
 
 </html>
